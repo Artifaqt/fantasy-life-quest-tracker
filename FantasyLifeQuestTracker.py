@@ -3,10 +3,13 @@
 Created on Tue Jan 14 18:13:33 2020
 
 @author: Sarah
+
+Modernized by Claude Code - Added sorting, search, caching, and performance improvements
 """
 
 import tkinter as tk
 from tkinter import *
+from tkinter import ttk
 from shutil import copyfile
 import pandas as pd
 from openpyxl import load_workbook
@@ -48,6 +51,14 @@ global choice_container
 global minl
 minl=0
 global location_container_outer
+global quest_cache  # Cached quest data from Excel to avoid repeated reads
+quest_cache = []
+global current_sort  # Current sort option: 'default', 'name', 'life', 'location', 'status'
+current_sort = 'default'
+global search_text  # Search filter text
+search_text = ""
+global sort_var  # StringVar for sort dropdown
+global search_var  # StringVar for search box
 
 def read():
     f = open("currentprogress.txt", "r")
@@ -61,7 +72,37 @@ def save():
     f = open("currentprogress.txt", "w")
     f.writelines("%s\n" % l for l in data)
     f.close()
-    
+
+def build_quest_cache():
+    """Build a cache of all quest data from Excel to avoid repeated cell reads"""
+    global quest_cache, wb, startLocationIndex, endLocationIndex, data
+    quest_cache = []
+
+    # Cache all quest data (rows 2 to len(data))
+    for row_idx in range(2, len(data)):
+        quest_info = {
+            'row': row_idx,
+            'status': int(data[row_idx]),
+            'url': wb['Sheet1'].cell(row=row_idx, column=URLCol).value,
+            'name': wb['Sheet1'].cell(row=row_idx, column=nameCol).value,
+            'life': wb['Sheet1'].cell(row=row_idx, column=livesCol).value,
+            'turn_in': wb['Sheet1'].cell(row=row_idx, column=turnInCol).value,
+            'locations': []  # List of location names where quest is available
+        }
+
+        # Cache columns 2-9 for display
+        quest_info['columns'] = {}
+        for col in range(2, 10):
+            quest_info['columns'][col] = wb['Sheet1'].cell(row=row_idx, column=col).value
+
+        # Cache location availability
+        for col in range(startLocationIndex, endLocationIndex):
+            if wb['Sheet1'].cell(row=row_idx, column=col).value == 1:
+                location_name = wb['Sheet1'].cell(row=1, column=col).value
+                quest_info['locations'].append(location_name)
+
+        quest_cache.append(quest_info)
+
 def setText(obj):
         obj.text.set(str(obj.array[0]) + " / " +  str(obj.array[1]) + " / "  + str(obj.array[2]) + " / "  + str(obj.array[3]))
     
@@ -101,9 +142,14 @@ def findLocationCol(name):
     return -1
     
 def OpenUrl(i, *args):
-    global URLCol
-    global wb
-    webbrowser.open_new(wb['Sheet1'].cell(row=i, column=URLCol).value)
+    """Open the wiki URL for a quest - now uses cached data"""
+    global quest_cache
+    # Find quest in cache by row index
+    for quest in quest_cache:
+        if quest['row'] == i:
+            if quest['url']:
+                webbrowser.open_new(quest['url'])
+            return
 
 def locationcallback(i, *args):
     global location_container_outer
@@ -125,19 +171,29 @@ def locationcallback(i, *args):
     
 
 def callback(i, *args):
-    global dataIndexArray
-    global choice_container
-    global placedata
-    global wb
-    global startLocationIndex
-    global endLocationIndex
+    """Handle quest status changes - now uses cached data for better performance"""
+    global dataIndexArray, choice_container, placedata, quest_cache
     choices = ['Unobtained','Obtained','Completed','Turned In']
-    oldchoice = int(data[dataIndexArray[i]])
+
+    row_idx = dataIndexArray[i]
+    oldchoice = int(data[row_idx])
     newchoice = choices.index(choice_container[i-minl].get())
-    data[dataIndexArray[i]] = str(newchoice)
-    
-    locationName = wb['Sheet1'].cell(row=dataIndexArray[i], column=turnInCol).value
-    curobj = placedata[findLocation(locationName)] #the place we are dealing with
+    data[row_idx] = str(newchoice)
+
+    # Find quest in cache
+    quest = None
+    for q in quest_cache:
+        if q['row'] == row_idx:
+            quest = q
+            quest['status'] = newchoice  # Update cache
+            break
+
+    if not quest:
+        return
+
+    locationName = quest['turn_in']
+    curobj = placedata[findLocation(locationName)]
+
     if(oldchoice != 1): #unobtained, completed, turned in
         if (newchoice != 1):
             curobj.array[oldchoice] -= 1
@@ -145,33 +201,30 @@ def callback(i, *args):
             setText(curobj)
         else:
             curobj.array[oldchoice] -= 1
-            for j in range(startLocationIndex, endLocationIndex):
-                tempval = wb['Sheet1'].cell(row=dataIndexArray[i], column=j).value
-                if tempval == 1:
-                    tempobj = placedata[findLocation(wb['Sheet1'].cell(row=1, column=j).value)]
-                    tempobj.array[newchoice] += 1
-                    setText(tempobj)
-                    
+            # Use cached locations instead of Excel reads
+            for loc_name in quest['locations']:
+                tempobj = placedata[findLocation(loc_name)]
+                tempobj.array[newchoice] += 1
+                setText(tempobj)
     else:
         if(newchoice != 1):
             curobj.array[newchoice] += 1
             setText(curobj)
-            for j in range(startLocationIndex, endLocationIndex):
-                tempval = wb['Sheet1'].cell(row=dataIndexArray[i], column=j).value
-                if tempval == 1:
-                    tempobj = placedata[findLocation(wb['Sheet1'].cell(row=1, column=j).value)]
-                    tempobj.array[oldchoice] -= 1
-                    setText(tempobj)
-    
-    
+            # Use cached locations instead of Excel reads
+            for loc_name in quest['locations']:
+                tempobj = placedata[findLocation(loc_name)]
+                tempobj.array[oldchoice] -= 1
+                setText(tempobj)
+
     placedata[allIndex].array[oldchoice] -= 1
     placedata[allIndex].array[newchoice] += 1
     setText(placedata[allIndex])
-    if(wb['Sheet1'].cell(row=dataIndexArray[i], column=livesCol).value != None):
+
+    if quest['life'] is not None:
         placedata[livesIndex].array[oldchoice] -= 1
         placedata[livesIndex].array[newchoice] += 1
         setText(placedata[livesIndex])
-    
+
     save()
     
 def goBack(*args):
@@ -206,152 +259,165 @@ def goForward(*args):
         showData()
 
 def showData():
-    global URLCol
-    global wb
-    global text_scroll
-    global dataIndexArray
-    global nameCol
-    global choice_container
-    global minl
-    global startLocationIndex
-    global endLocationIndex
+    """Display quest data - now uses cached data for better performance"""
+    global text_scroll, dataIndexArray, choice_container, minl
+    global location_container_outer, quest_cache, wb
+
     choice_container = []
     choices = ['Unobtained','Obtained','Completed','Turned In']
-    global location_container_outer
     location_container_outer = []
-    location_container_inner = []
-    locationchoices = []
-    for h in range(startLocationIndex, endLocationIndex):
-        locationchoices.append(wb['Sheet1'].cell(row=1, column=h).value)
-    
+
     ######Labels at the top of the info on right side######
     for j in range(2,10):
         if (j != URLCol):
             tk.Label(text_scroll.frame, text=wb['Sheet1'].cell(row=1, column=j).value).grid(row=0,column=j, sticky='nw')
     tk.Label(text_scroll.frame, text="Location").grid(row=0,column=10, sticky='nw')
-            
+
     maxl = len(dataIndexArray)
     if (maxl-minl) > 29:
         maxl = minl+29
+
     for i in range(minl, maxl):
+        row_idx = dataIndexArray[i]
+
+        # Find quest in cache
+        quest = None
+        for q in quest_cache:
+            if q['row'] == row_idx:
+                quest = q
+                break
+
+        if not quest:
+            continue
+
+        # Status dropdown
         var = StringVar()
         choice_container.append(var)
-        val = int(data[dataIndexArray[i]])
+        val = quest['status']
         choice_container[i-minl].set(choices[val])
         option = OptionMenu(text_scroll.frame, choice_container[i-minl], *choices)
         option.grid(row=i+1-minl, column=2)
         choice_container[i-minl].trace("w", lambda a, b, c, i=i: callback(i))
-        
+
+        # Display quest columns using cached data
         for j in range(3, 10):
             if (j != URLCol):
                 if(j == nameCol):
-                    obj=Button(text_scroll.frame, text=wb['Sheet1'].cell(row=dataIndexArray[i], column=nameCol).value)
-                    obj.configure(command=lambda i=dataIndexArray[i]: OpenUrl(i))
+                    obj=Button(text_scroll.frame, text=quest['name'])
+                    obj.configure(command=lambda i=row_idx: OpenUrl(i))
                     obj.grid(row=i+1-minl,column=j, sticky='nw')
                 else:
-                    tk.Label(text_scroll.frame, text=wb['Sheet1'].cell(row=dataIndexArray[i], column=j).value).grid(row=i+1-minl,column=j, sticky='nw')
-                    
-                    
-        location_container_inner = []
-        for k in range(startLocationIndex, endLocationIndex):
-            if(wb['Sheet1'].cell(row=dataIndexArray[i], column=k).value == 1):
-                location_container_inner.append(wb['Sheet1'].cell(row=1, column=k).value)
-                
-        locationvar = StringVar()
-        locationvar.set(location_container_inner[0])
-        locationoption = OptionMenu(text_scroll.frame, locationvar, *location_container_inner)
-        locationoption.grid(row=i+1-minl, column=10)
-        location_container_outer.append(locationvar)
-        location_container_outer[i-minl].trace("w", lambda a, b, c, i=i: locationcallback(i))
-        
+                    tk.Label(text_scroll.frame, text=quest['columns'][j]).grid(row=i+1-minl,column=j, sticky='nw')
+
+        # Location dropdown - use cached locations
+        if quest['locations']:
+            locationvar = StringVar()
+            locationvar.set(quest['locations'][0])
+            locationoption = OptionMenu(text_scroll.frame, locationvar, *quest['locations'])
+            locationoption.grid(row=i+1-minl, column=10)
+            location_container_outer.append(locationvar)
+            location_container_outer[i-minl].trace("w", lambda a, b, c, i=i: locationcallback(i))
+
     backb=Button(text_scroll.frame, text="<- Back")
     backb.configure(command=goBack)
     backb.grid(row=maxl+1-minl,column=4, sticky='nw')
-    
+
     forwardb=Button(text_scroll.frame, text="Forward ->")
     forwardb.configure(command=goForward)
     forwardb.grid(row=maxl+1-minl,column=5, sticky='nw')
 
 def gatherData():
-    global URLCol
-    global wb
-    global currentPlaceIndex
-    global topButton
-    global turnInCol
-    global placedata
-    global allIndex
-    global livesIndex
-    global livesCol
-    global dataIndexArray
-    global minl
-    
-            
-    dataIndexArray = [] #array stores previous indexes of current search
-    for k in range(2, len(data)):
+    """Filter and sort quest data - now uses cached data with sorting support"""
+    global currentPlaceIndex, topButton, placedata, allIndex, livesIndex
+    global dataIndexArray, minl, quest_cache, current_sort, search_text
+
+    dataIndexArray = []
+    current_place_name = placedata[currentPlaceIndex].key
+
+    # Filter quests based on status and location using cache
+    for quest in quest_cache:
+        row_idx = quest['row']
+        status = quest['status']
+
+        # Apply search filter
+        if search_text and search_text.lower() not in quest['name'].lower():
+            continue
+
+        # Apply location and status filters
+        include = False
+
         ##DISPLAYING ALL DATA includes "obtained"
-        if(topButton == 4): 
+        if(topButton == 4):
             if(currentPlaceIndex == allIndex): #if "All" is selected
-                dataIndexArray.append(k)
-            elif((currentPlaceIndex == livesIndex) & (wb['Sheet1'].cell(row=k, column=livesCol).value != None)): #"Lives"
-                dataIndexArray.append(k)
+                include = True
+            elif((currentPlaceIndex == livesIndex) & (quest['life'] is not None)): #"Lives"
+                include = True
             #If any location is selected
-            elif((int(data[k]) != 1)&(placedata[currentPlaceIndex].key == wb['Sheet1'].cell(row=k, column=turnInCol).value)):
-                dataIndexArray.append(k)
-            elif(int(data[k]) == 1) & (findLocationCol(placedata[currentPlaceIndex].key) != -1):
-                if((wb['Sheet1'].cell(row=k, column=findLocationCol(placedata[currentPlaceIndex].key)).value) == 1):
-                    dataIndexArray.append(k)
-                
+            elif((status != 1) & (current_place_name == quest['turn_in'])):
+                include = True
+            elif(status == 1) & (current_place_name in quest['locations']):
+                include = True
+
         #UNOBTAINED, COMPLETED, TURNED IN
-        elif((topButton != 1) & (int(data[k]) == topButton)):
+        elif((topButton != 1) & (status == topButton)):
             if(currentPlaceIndex == allIndex): #if "All" is selected
-                dataIndexArray.append(k)
-            elif((currentPlaceIndex == livesIndex) & (wb['Sheet1'].cell(row=k, column=livesCol).value != None)): #"Lives"
-                dataIndexArray.append(k)
-            elif(placedata[currentPlaceIndex].key == wb['Sheet1'].cell(row=k, column=turnInCol).value):
-                dataIndexArray.append(k)
-                
+                include = True
+            elif((currentPlaceIndex == livesIndex) & (quest['life'] is not None)): #"Lives"
+                include = True
+            elif(current_place_name == quest['turn_in']):
+                include = True
+
         ##OBTAINED
-        elif((topButton == 1) & (int(data[k]) == topButton)):
+        elif((topButton == 1) & (status == topButton)):
             if(currentPlaceIndex == allIndex): #if "All" is selected
-                dataIndexArray.append(k)
-            elif((currentPlaceIndex == livesIndex) & (wb['Sheet1'].cell(row=k, column=livesCol).value != None)): #"Lives"
-                dataIndexArray.append(k)
-            elif(findLocationCol(placedata[currentPlaceIndex].key) != -1):
-                if((wb['Sheet1'].cell(row=k, column=findLocationCol(placedata[currentPlaceIndex].key)).value) == 1):
-                    dataIndexArray.append(k)
-                
+                include = True
+            elif((currentPlaceIndex == livesIndex) & (quest['life'] is not None)): #"Lives"
+                include = True
+            elif(current_place_name in quest['locations']):
+                include = True
+
+        if include:
+            dataIndexArray.append(row_idx)
+
+    # Apply sorting
+    if current_sort == 'name':
+        dataIndexArray.sort(key=lambda idx: next((str(q['name']) if q['name'] else '') for q in quest_cache if q['row'] == idx).lower())
+    elif current_sort == 'life':
+        dataIndexArray.sort(key=lambda idx: next((str(q['life']) if q['life'] else 'zzz') for q in quest_cache if q['row'] == idx).lower())
+    elif current_sort == 'location':
+        dataIndexArray.sort(key=lambda idx: next((str(q['turn_in']) if q['turn_in'] else '') for q in quest_cache if q['row'] == idx).lower())
+    elif current_sort == 'status':
+        dataIndexArray.sort(key=lambda idx: next(q['status'] for q in quest_cache if q['row'] == idx))
+    # 'default' keeps original order
+
     minl = 0
     showData()
     
 
 def initializeCount():
-    global data
-    global wb
-    global placedata
-    global livesIndex
-    global allIndex
-    global turnInCol
-    global startLocationIndex
-    global endLocationIndex
-    global livesCol
+    """Initialize quest counters - now uses cached data for better performance"""
+    global placedata, livesIndex, allIndex, quest_cache
+
     #0=unobtained 1=obtained 2=completed 3=turnedin
-    for i in range(2, len(data)):
-        placedata[allIndex].array[int(data[i])] += 1 #all array
-        
+    for quest in quest_cache:
+        status = quest['status']
+        placedata[allIndex].array[status] += 1 #all array
+
         #if it is a Life quest
-        if(wb['Sheet1'].cell(row=i, column=livesCol).value != None):
-            placedata[livesIndex].array[int(data[i])] += 1
-        
+        if quest['life'] is not None:
+            placedata[livesIndex].array[status] += 1
+
         #this covers adding the count to ALL sections except "obtained"
-        if(int(data[i])!=1):
-            locationIndex=findLocation(wb['Sheet1'].cell(row=i, column=turnInCol).value)
-            placedata[locationIndex].array[int(data[i])] += 1
+        if status != 1:
+            locationIndex = findLocation(quest['turn_in'])
+            if locationIndex >= 0:
+                placedata[locationIndex].array[status] += 1
         else: #"obtained" update goes here
-            for j in range(startLocationIndex, endLocationIndex):
-                if(wb['Sheet1'].cell(row=i, column=j).value == 1):
-                    locationIndex=findLocation(wb['Sheet1'].cell(row=1, column=j).value)
-                    placedata[locationIndex].array[int(data[i])] += 1
-        
+            for loc_name in quest['locations']:
+                locationIndex = findLocation(loc_name)
+                if locationIndex >= 0:
+                    placedata[locationIndex].array[status] += 1
+
     #update the text for all locations
     for j in range(len(placedata)):
         setText(placedata[j])
@@ -378,6 +444,30 @@ def selectLocation(n, *args):
     global holdSelf
     currentPlaceIndex = n
     changeTitle()
+    text_frame.destroy()
+    text_frame = Frame(holdSelf)
+    text_frame.pack_propagate(0)
+    text_frame.config(height=1000, width=1230)
+    text_frame.pack()
+    text_scroll = Scrollbar(text_frame, "Text")
+    gatherData()
+
+def onSortChange(*args):
+    """Handle sort dropdown change"""
+    global current_sort, sort_var, text_scroll, text_frame, holdSelf
+    current_sort = sort_var.get().lower()
+    text_frame.destroy()
+    text_frame = Frame(holdSelf)
+    text_frame.pack_propagate(0)
+    text_frame.config(height=1000, width=1230)
+    text_frame.pack()
+    text_scroll = Scrollbar(text_frame, "Text")
+    gatherData()
+
+def onSearchChange(*args):
+    """Handle search box change"""
+    global search_text, search_var, text_scroll, text_frame, holdSelf
+    search_text = search_var.get()
     text_frame.destroy()
     text_frame = Frame(holdSelf)
     text_frame.pack_propagate(0)
@@ -522,40 +612,58 @@ class Window(Scrollbar):
         holdSelf = self
         global titleLocation
         titleLocation = self.master
-        
+
         map_frame = Frame(self)
         map_frame.pack_propagate(0)
         map_frame.config(height=1000, width=670)
         map_frame.pack(side = LEFT)
-        
+
         map_scroll = Scrollbar(map_frame, "Map")
-        
+
         button_frame = Frame(self)
         button_frame.pack()
-        
+
         global text_frame
         text_frame = Frame(self)
         text_frame.pack_propagate(0)
         text_frame.config(height=1000, width=1230)
         text_frame.pack()
-        
+
         global text_scroll
         text_scroll = Scrollbar(text_frame, "Text")
         changeTitle()
         gatherData()
-        
-        # creating buttons
+
+        # creating filter buttons
         button_manager = [None]*5
-        
+
         button_manager[0] = Button(button_frame, text="Unobtained Requests", command=lambda v=0: topB(v))
         button_manager[1] = Button(button_frame, text="Obtained Requests", command=lambda v=1: topB(v))
         button_manager[2] = Button(button_frame, text="Completed Requests", command=lambda v=2: topB(v))
         button_manager[3] = Button(button_frame, text="Turned In Requests", command=lambda v=3: topB(v))
         button_manager[4] = Button(button_frame, text="All Requests", command=lambda v=4: topB(v))
-        
-        # placing buttons
+
+        # placing filter buttons
         for i in range(5):
             button_manager[i].grid(row = 0, column = i)
+
+        # Add Sort dropdown
+        global sort_var
+        sort_var = StringVar()
+        sort_var.set("Default")
+        tk.Label(button_frame, text="Sort by:").grid(row=1, column=0, sticky='e', padx=(10,2))
+        sort_options = ['Default', 'Name', 'Life', 'Location', 'Status']
+        sort_dropdown = ttk.Combobox(button_frame, textvariable=sort_var, values=sort_options, state='readonly', width=15)
+        sort_dropdown.grid(row=1, column=1, sticky='w', pady=5)
+        sort_var.trace("w", onSortChange)
+
+        # Add Search box
+        global search_var
+        search_var = StringVar()
+        tk.Label(button_frame, text="Search:").grid(row=1, column=2, sticky='e', padx=(10,2))
+        search_entry = tk.Entry(button_frame, textvariable=search_var, width=25)
+        search_entry.grid(row=1, column=3, columnspan=2, sticky='w', pady=5)
+        search_var.trace("w", onSearchChange)
             
         
         
@@ -580,11 +688,14 @@ save()
 
 
 try:
-    global wb  
+    global wb
     wb = load_workbook('FLData.xlsx')
 except FileNotFoundError:
     print("ERROR")
     sys.exit()
+
+# Build quest cache for better performance
+build_quest_cache()
 
 root = Tk()
 
