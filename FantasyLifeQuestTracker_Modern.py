@@ -369,14 +369,51 @@ class ModernQuestTracker(ctk.CTk):
     def setup_ui(self):
         """Setup the UI layout"""
 
-        # Top toolbar
-        toolbar = ctk.CTkFrame(self, height=60)
+        # Menu bar
+        menubar = tk.Menu(self)
+        self.config(menu=menubar)
+
+        # File menu
+        file_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="File", menu=file_menu)
+        file_menu.add_command(label="Export Data...", command=self.export_data, accelerator="Ctrl+E")
+        file_menu.add_command(label="Import Data...", command=self.import_data)
+        file_menu.add_separator()
+        file_menu.add_command(label="Exit", command=self.quit)
+
+        # View menu
+        view_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="View", menu=view_menu)
+        self.show_left_panel_var = tk.BooleanVar(value=True)
+        self.show_right_panel_var = tk.BooleanVar(value=True)
+        self.show_progress_panel_var = tk.BooleanVar(value=True)
+        view_menu.add_checkbutton(label="Life Filters Panel", variable=self.show_left_panel_var, command=self.toggle_left_panel)
+        view_menu.add_checkbutton(label="Quest Details Panel", variable=self.show_right_panel_var, command=self.toggle_right_panel)
+        view_menu.add_checkbutton(label="Progress Tracker", variable=self.show_progress_panel_var, command=self.toggle_progress_panel)
+        view_menu.add_separator()
+        view_menu.add_command(label="Toggle Dark Mode", command=self.toggle_dark_mode)
+
+        # Edit menu
+        edit_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Edit", menu=edit_menu)
+        edit_menu.add_command(label="Bulk Edit...", command=self.show_bulk_operations, accelerator="Ctrl+B")
+        edit_menu.add_separator()
+        edit_menu.add_command(label="Mark as Unobtained", command=lambda: self.update_selected_status(0), accelerator="Ctrl+1")
+        edit_menu.add_command(label="Mark as Obtained", command=lambda: self.update_selected_status(1), accelerator="Ctrl+2")
+        edit_menu.add_command(label="Mark as Completed", command=lambda: self.update_selected_status(2), accelerator="Ctrl+3")
+        edit_menu.add_command(label="Mark as Turned In", command=lambda: self.update_selected_status(3), accelerator="Ctrl+4")
+
+        # Top toolbar - use grid for better responsiveness
+        toolbar = ctk.CTkFrame(self)
         toolbar.pack(fill="x", padx=10, pady=(10, 0))
-        toolbar.pack_propagate(False)
+
+        # Row 1: Dark mode, Search, Sort
+        row1 = ctk.CTkFrame(toolbar)
+        row1.pack(fill="x", pady=5)
 
         # Dark mode toggle
         self.dark_mode_switch = ctk.CTkSwitch(
-            toolbar,
+            row1,
             text="Dark Mode",
             command=self.toggle_dark_mode,
             onvalue="on",
@@ -386,61 +423,63 @@ class ModernQuestTracker(ctk.CTk):
         self.dark_mode_switch.pack(side="left", padx=10)
 
         # Search box with field selector
-        ctk.CTkLabel(toolbar, text="Search:").pack(side="left", padx=(20, 5))
+        ctk.CTkLabel(row1, text="Search:").pack(side="left", padx=(20, 5))
 
         # Search field dropdown
         self.search_field_var = tk.StringVar(value="Name")
         search_field_dropdown = ctk.CTkOptionMenu(
-            toolbar,
+            row1,
             variable=self.search_field_var,
             values=["Name", "Life", "NPC", "Description", "All"],
             command=self.on_search_change,
-            width=120
+            width=100
         )
         search_field_dropdown.pack(side="left", padx=5)
 
         # Search text entry
         self.search_var = tk.StringVar()
         self.search_var.trace("w", self.on_search_change)
-        self.search_entry = ctk.CTkEntry(toolbar, textvariable=self.search_var, width=200, placeholder_text="Type to search...")
+        self.search_entry = ctk.CTkEntry(row1, textvariable=self.search_var, width=200, placeholder_text="Type to search...")
         self.search_entry.pack(side="left", padx=5)
 
         # Sort dropdown
-        ctk.CTkLabel(toolbar, text="Sort:").pack(side="left", padx=(20, 5))
+        ctk.CTkLabel(row1, text="Sort:").pack(side="left", padx=(20, 5))
         self.sort_var = tk.StringVar(value="name")
         self.sort_dropdown = ctk.CTkOptionMenu(
-            toolbar,
+            row1,
             variable=self.sort_var,
             values=["name", "life", "rank", "status", "last_modified"],
             command=self.on_sort_change,
-            width=150
+            width=120
         )
         self.sort_dropdown.pack(side="left", padx=5)
 
-        # Filter buttons
-        filter_frame = ctk.CTkFrame(toolbar)
-        filter_frame.pack(side="left", padx=20)
+        # Bulk operations button
+        bulk_btn = ctk.CTkButton(row1, text="Bulk Edit", command=self.show_bulk_operations, width=80)
+        bulk_btn.pack(side="right", padx=5)
+
+        # Export button
+        export_btn = ctk.CTkButton(row1, text="Export", command=self.export_data, width=80)
+        export_btn.pack(side="right", padx=5)
+
+        # Row 2: Filter radio buttons
+        row2 = ctk.CTkFrame(toolbar)
+        row2.pack(fill="x", pady=5)
+
+        ctk.CTkLabel(row2, text="Filter:").pack(side="left", padx=10)
 
         self.status_var = tk.StringVar(value="all")
         status_values = [("All", "all"), ("Unobtained", "0"), ("Obtained", "1"), ("Completed", "2"), ("Turned In", "3")]
 
         for text, value in status_values:
             btn = ctk.CTkRadioButton(
-                filter_frame,
+                row2,
                 text=text,
                 variable=self.status_var,
                 value=value,
                 command=self.on_filter_change
             )
             btn.pack(side="left", padx=5)
-
-        # Export button
-        export_btn = ctk.CTkButton(toolbar, text="Export", command=self.export_data, width=100)
-        export_btn.pack(side="right", padx=10)
-
-        # Bulk operations button
-        bulk_btn = ctk.CTkButton(toolbar, text="Bulk Edit", command=self.show_bulk_operations, width=100)
-        bulk_btn.pack(side="right", padx=5)
 
         # Main content area
         content = ctk.CTkFrame(self)
@@ -535,16 +574,19 @@ class ModernQuestTracker(ctk.CTk):
         self.tree.bind("<Button-3>", self.show_context_menu)
         self.tree.bind("<<TreeviewSelect>>", self.on_selection_change)
 
-        # Right panel - Quest details
-        right_panel = ctk.CTkFrame(content, width=400)
-        right_panel.pack(side="right", fill="both", padx=(5, 0))
-        right_panel.pack_propagate(False)
+        # Right panel - Quest details (store reference for toggling)
+        self.right_panel = ctk.CTkFrame(content, width=400)
+        self.right_panel.pack(side="right", fill="both", padx=(5, 0))
+        self.right_panel.pack_propagate(False)
+        right_panel = self.right_panel  # Keep local variable for backward compatibility
 
         ctk.CTkLabel(right_panel, text="Quest Details", font=("Arial", 16, "bold")).pack(pady=10)
 
-        # Details display
+        # Details display (read-only)
         self.details_text = ctk.CTkTextbox(right_panel, height=300, wrap="word")
         self.details_text.pack(fill="both", expand=True, padx=10, pady=5)
+        # Make it read-only by binding key events
+        self.details_text.bind("<Key>", lambda _: "break")
 
         # Notes section
         ctk.CTkLabel(right_panel, text="Notes:", font=("Arial", 12, "bold")).pack(pady=(10, 5))
@@ -848,18 +890,17 @@ class ModernQuestTracker(ctk.CTk):
         quest_id = list(self.selected_quests)[0]
         note = self.notes_text.get("1.0", "end-1c")
         self.db.add_note(quest_id, note)
-        messagebox.showinfo("Success", "Note saved!")
+        # Note saved silently - no popup
 
     def update_selected_status(self, new_status):
         """Update status of selected quests"""
         if not self.selected_quests:
-            messagebox.showwarning("No Selection", "Please select quest(s) first")
-            return
+            return  # Silently return if nothing selected
 
         self.db.bulk_update_status(list(self.selected_quests), new_status)
         self.load_quests()
         self.update_progress_bars()  # Refresh progress bars
-        messagebox.showinfo("Success", f"Updated {len(self.selected_quests)} quest(s)")
+        # Status updated silently - no popup
 
     def show_bulk_operations(self):
         """Show bulk operations dialog"""
@@ -919,7 +960,7 @@ class ModernQuestTracker(ctk.CTk):
 
         if filename:
             self.db.export_to_json(filename)
-            messagebox.showinfo("Success", f"Data exported to {filename}")
+            # Data exported silently - no popup
 
     def toggle_dark_mode(self):
         """Toggle between dark and light mode"""
@@ -927,6 +968,47 @@ class ModernQuestTracker(ctk.CTk):
             ctk.set_appearance_mode("dark")
         else:
             ctk.set_appearance_mode("light")
+
+    def import_data(self):
+        """Import quest data from JSON"""
+        filename = filedialog.askopenfilename(
+            defaultextension=".json",
+            filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
+        )
+
+        if filename:
+            try:
+                with open(filename, 'r') as f:
+                    data = json.load(f)
+                # TODO: Implement import logic
+                messagebox.showinfo("Import", "Import functionality coming soon!")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to import data: {str(e)}")
+
+    def toggle_left_panel(self):
+        """Toggle visibility of left sidebar"""
+        if self.show_left_panel_var.get():
+            self.left_sidebar.pack(side="left", fill="y", padx=(0, 5))
+            # Force to be before center panel
+            self.left_sidebar.lift()
+        else:
+            self.left_sidebar.pack_forget()
+
+    def toggle_right_panel(self):
+        """Toggle visibility of right panel"""
+        if self.show_right_panel_var.get():
+            self.right_panel.pack(side="right", fill="both", padx=(5, 0))
+        else:
+            self.right_panel.pack_forget()
+
+    def toggle_progress_panel(self):
+        """Toggle visibility of progress panel"""
+        if self.show_progress_panel_var.get():
+            if hasattr(self, 'bottom_panel'):
+                self.bottom_panel.pack(side="bottom", fill="x", padx=10, pady=(0, 10))
+        else:
+            if hasattr(self, 'bottom_panel'):
+                self.bottom_panel.pack_forget()
 
     def bind_shortcuts(self):
         """Setup keyboard shortcuts"""
