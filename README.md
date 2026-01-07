@@ -1,5 +1,30 @@
-# Fantasy Life Quest Tracker 2.0
+# Fantasy Life Quest Tracker
 
+## 🎮 Two Versions Available
+
+### 🌟 **Modern Edition (2026)** - RECOMMENDED
+Beautiful, feature-rich version with dark mode, virtual scrolling, and tons of improvements!
+
+**Run:** `python3 FantasyLifeQuestTracker_Modern.py`
+
+**Features:**
+- ✨ Modern UI with dark/light mode toggle
+- 🎨 Color-coded quest rows (red/yellow/green/blue)
+- 📊 Live statistics dashboard
+- 🔍 Real-time search with debouncing
+- ⚡ Virtual scrolling (view all 1296 quests at once!)
+- 📝 Quest notes system
+- 🎯 Multi-select & bulk operations (Ctrl+Click, Shift+Click)
+- ⌨️ Keyboard shortcuts (Ctrl+F, Ctrl+1/2/3/4, etc.)
+- 💾 SQLite database backend (fast & reliable)
+- 📤 Export to JSON
+- 🪟 Resizable window
+
+**See:** [MODERNIZATION_GUIDE.md](MODERNIZATION_GUIDE.md) for full documentation
+
+---
+
+### 📦 **Original Version (2020)**
 Download Link: https://sarahb222.itch.io/unofficial-fantasy-life-quest-tracker
 
 - Extract the file to whichever folder you want.
