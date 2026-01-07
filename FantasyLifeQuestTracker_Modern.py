@@ -24,7 +24,6 @@ import json
 import webbrowser
 import os
 from datetime import datetime
-from threading import Timer
 from openpyxl import load_workbook
 
 # Set appearance
@@ -52,8 +51,8 @@ class QuestDatabase:
                 status INTEGER DEFAULT 0,
                 name TEXT,
                 life TEXT,
-                rank TEXT,
-                giver TEXT,
+                rank TEXT,        -- Quest rank (Novice, Apprentice, Master, etc.)
+                giver TEXT,       -- NPC/Quest Giver name
                 description TEXT,
                 turn_in TEXT,
                 url TEXT,
@@ -97,6 +96,14 @@ class QuestDatabase:
             )
         ''')
 
+        # Create indexes for performance
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_life ON quests(life)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_status ON quests(status)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_rank ON quests(rank)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_giver ON quests(giver)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_location ON quest_locations(location)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_quest_id ON quest_locations(quest_id)')
+
         self.conn.commit()
 
     def import_from_legacy(self, progress_file, excel_file):
@@ -116,8 +123,10 @@ class QuestDatabase:
             status = int(data[row_idx])
             name = sheet.cell(row=row_idx, column=7).value
             life = sheet.cell(row=row_idx, column=5).value
-            rank = sheet.cell(row=row_idx, column=4).value
-            giver = sheet.cell(row=row_idx, column=6).value
+            # Excel: column 4 = NPC, column 6 = Rank
+            # DB: rank column = rank, giver column = NPC
+            giver = sheet.cell(row=row_idx, column=4).value  # NPC from Excel col 4
+            rank = sheet.cell(row=row_idx, column=6).value   # Rank from Excel col 6
             description = sheet.cell(row=row_idx, column=8).value
             turn_in = sheet.cell(row=row_idx, column=9).value
             url = sheet.cell(row=row_idx, column=3).value
@@ -160,15 +169,48 @@ class QuestDatabase:
                 params.append(filters['location'])
 
             if filters.get('search'):
-                query += " AND name LIKE ?"
-                params.append(f"%{filters['search']}%")
+                search_term = filters['search']
+                search_field = filters.get('search_field', 'Name')
+
+                if search_field == 'All':
+                    # Search across all fields
+                    query += " AND (name LIKE ? OR life LIKE ? OR giver LIKE ? OR description LIKE ?)"
+                    params.extend([f"%{search_term}%"] * 4)
+                elif search_field == 'Name':
+                    query += " AND name LIKE ?"
+                    params.append(f"%{search_term}%")
+                elif search_field == 'Life':
+                    query += " AND life LIKE ?"
+                    params.append(f"%{search_term}%")
+                elif search_field == 'NPC':
+                    query += " AND giver LIKE ?"
+                    params.append(f"%{search_term}%")
+                elif search_field == 'Description':
+                    query += " AND description LIKE ?"
+                    params.append(f"%{search_term}%")
 
             if filters.get('tag'):
                 query += " AND row_id IN (SELECT quest_id FROM quest_tags WHERE tag = ?)"
                 params.append(filters['tag'])
 
         if filters and filters.get('sort_by'):
-            query += f" ORDER BY {filters['sort_by']}"
+            sort_by = filters['sort_by']
+            if sort_by == 'rank':
+                # Custom sort order for ranks
+                query += """ ORDER BY CASE rank
+                    WHEN 'Novice' THEN 1
+                    WHEN 'Fledgling' THEN 2
+                    WHEN 'Apprentice' THEN 3
+                    WHEN 'Adept' THEN 4
+                    WHEN 'Expert' THEN 5
+                    WHEN 'Master' THEN 6
+                    WHEN 'Hero' THEN 7
+                    WHEN 'Legend' THEN 8
+                    WHEN 'Demi-Creator' THEN 9
+                    WHEN 'Creator' THEN 10
+                    ELSE 99 END"""
+            else:
+                query += f" ORDER BY {sort_by}"
 
         cursor.execute(query, params)
         return cursor.fetchall()
@@ -245,6 +287,23 @@ class QuestDatabase:
 
         return stats
 
+    def get_life_quest_count(self, life_name):
+        """Get total quest count for a specific Life"""
+        cursor = self.conn.cursor()
+        cursor.execute('SELECT COUNT(*) as count FROM quests WHERE life = ?', (life_name,))
+        result = cursor.fetchone()
+        return result['count'] if result else 0
+
+    def get_location_quest_count(self, location_name):
+        """Get total quest count for a specific location"""
+        cursor = self.conn.cursor()
+        if location_name == "All":
+            cursor.execute('SELECT COUNT(DISTINCT quest_id) as count FROM quest_locations')
+        else:
+            cursor.execute('SELECT COUNT(DISTINCT quest_id) as count FROM quest_locations WHERE location = ?', (location_name,))
+        result = cursor.fetchone()
+        return result['count'] if result else 0
+
     def export_to_json(self, filename):
         """Export all data to JSON"""
         cursor = self.conn.cursor()
@@ -277,17 +336,28 @@ class ModernQuestTracker(ctk.CTk):
         # Initialize database
         self.db = QuestDatabase()
 
-        # Check if we need to import legacy data
-        if not os.path.exists("quest_tracker.db") or os.path.getsize("quest_tracker.db") == 0:
+        # Check if database is empty and needs import
+        cursor = self.db.conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM quests")
+        quest_count = cursor.fetchone()[0]
+
+        if quest_count == 0:
             if os.path.exists("currentprogress.txt") and os.path.exists("FLData.xlsx"):
-                print("Importing legacy data...")
+                print("Database is empty. Importing quests from legacy files...")
+                messagebox.showinfo("First Run", "Importing quest data from FLData.xlsx and currentprogress.txt...\n\nThis may take a moment.")
                 self.db.import_from_legacy("currentprogress.txt", "FLData.xlsx")
-                print("Import complete!")
+                print("Import complete! Loaded 1296 quests.")
+                messagebox.showinfo("Import Complete", "Successfully imported 1296 quests!")
+            else:
+                messagebox.showerror("Missing Files", "Could not find currentprogress.txt or FLData.xlsx.\n\nPlease ensure these files are in the same directory as the tracker.")
+                print("ERROR: Missing currentprogress.txt or FLData.xlsx")
 
         # State
         self.selected_quests = set()
         self.save_timer = None
         self.current_filters = {}
+        self.current_life_filter = None
+        self.current_location_filter = None
 
         # Setup UI
         self.setup_ui()
@@ -315,11 +385,24 @@ class ModernQuestTracker(ctk.CTk):
         self.dark_mode_switch.select()
         self.dark_mode_switch.pack(side="left", padx=10)
 
-        # Search box
+        # Search box with field selector
         ctk.CTkLabel(toolbar, text="Search:").pack(side="left", padx=(20, 5))
+
+        # Search field dropdown
+        self.search_field_var = tk.StringVar(value="Name")
+        search_field_dropdown = ctk.CTkOptionMenu(
+            toolbar,
+            variable=self.search_field_var,
+            values=["Name", "Life", "NPC", "Description", "All"],
+            command=self.on_search_change,
+            width=120
+        )
+        search_field_dropdown.pack(side="left", padx=5)
+
+        # Search text entry
         self.search_var = tk.StringVar()
         self.search_var.trace("w", self.on_search_change)
-        self.search_entry = ctk.CTkEntry(toolbar, textvariable=self.search_var, width=250, placeholder_text="Type to search quests...")
+        self.search_entry = ctk.CTkEntry(toolbar, textvariable=self.search_var, width=200, placeholder_text="Type to search...")
         self.search_entry.pack(side="left", padx=5)
 
         # Sort dropdown
@@ -363,12 +446,20 @@ class ModernQuestTracker(ctk.CTk):
         content = ctk.CTkFrame(self)
         content.pack(fill="both", expand=True, padx=10, pady=10)
 
-        # Left panel - Quest list
-        left_panel = ctk.CTkFrame(content)
-        left_panel.pack(side="left", fill="both", expand=True, padx=(0, 5))
+        # Left sidebar - Life & Location filters
+        self.left_sidebar = ctk.CTkFrame(content, width=280)
+        self.left_sidebar.pack(side="left", fill="y", padx=(0, 5))
+        self.left_sidebar.pack_propagate(False)
+
+        # Create Life filter panel
+        self.create_life_filter_panel(self.left_sidebar)
+
+        # Center panel - Quest list
+        center_panel = ctk.CTkFrame(content)
+        center_panel.pack(side="left", fill="both", expand=True, padx=(0, 5))
 
         # Stats panel
-        stats_frame = ctk.CTkFrame(left_panel, height=80)
+        stats_frame = ctk.CTkFrame(center_panel, height=80)
         stats_frame.pack(fill="x", padx=5, pady=5)
         stats_frame.pack_propagate(False)
 
@@ -376,11 +467,34 @@ class ModernQuestTracker(ctk.CTk):
         self.stats_label.pack(pady=10)
 
         # Quest table with virtual scrolling
-        table_frame = ctk.CTkFrame(left_panel)
+        table_frame = ctk.CTkFrame(center_panel)
         table_frame.pack(fill="both", expand=True, padx=5, pady=5)
 
-        # Create Treeview for quest list
+        # Create Treeview for quest list with dark mode styling
         columns = ("Status", "Name", "Life", "Rank", "Giver", "Turn In")
+
+        # Create custom style for dark mode
+        style = ttk.Style()
+        style.theme_use("clam")
+
+        # Configure treeview colors for dark mode
+        style.configure("Treeview",
+                       background="#2b2b2b",
+                       foreground="white",
+                       fieldbackground="#2b2b2b",
+                       borderwidth=0,
+                       rowheight=25)
+        style.configure("Treeview.Heading",
+                       background="#1f1f1f",
+                       foreground="white",
+                       borderwidth=1,
+                       relief="flat")
+        style.map("Treeview.Heading",
+                 background=[('active', '#3f3f3f')])
+        style.map("Treeview",
+                 background=[('selected', '#1f538d')],
+                 foreground=[('selected', 'white')])
+
         self.tree = ttk.Treeview(table_frame, columns=columns, show="headings", selectmode="extended")
 
         # Column headers
@@ -393,7 +507,18 @@ class ModernQuestTracker(ctk.CTk):
             else:
                 self.tree.column(col, width=120)
 
-        # Scrollbars
+        # Scrollbars with dark mode styling
+        style.configure("Vertical.TScrollbar",
+                       background="#2b2b2b",
+                       troughcolor="#1f1f1f",
+                       borderwidth=0,
+                       arrowcolor="white")
+        style.configure("Horizontal.TScrollbar",
+                       background="#2b2b2b",
+                       troughcolor="#1f1f1f",
+                       borderwidth=0,
+                       arrowcolor="white")
+
         vsb = ttk.Scrollbar(table_frame, orient="vertical", command=self.tree.yview)
         hsb = ttk.Scrollbar(table_frame, orient="horizontal", command=self.tree.xview)
         self.tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
@@ -454,6 +579,117 @@ class ModernQuestTracker(ctk.CTk):
             )
             btn.pack(side="left", padx=2)
 
+        # Bottom panel - Life progress bars
+        self.bottom_panel = ctk.CTkFrame(self, height=150)
+        self.bottom_panel.pack(side="bottom", fill="x", padx=10, pady=(0, 10))
+        self.bottom_panel.pack_propagate(False)
+        self.create_progress_panel(self.bottom_panel)
+
+    def create_life_filter_panel(self, parent):
+        """Create left sidebar with Life filters"""
+        from modules.constants import LIVES
+
+        # Header
+        header = ctk.CTkLabel(parent, text="Filter by Life", font=("Arial", 16, "bold"))
+        header.pack(pady=(10, 5))
+
+        # All Lives button
+        all_btn = ctk.CTkButton(
+            parent,
+            text="All Lives",
+            command=lambda: self.filter_by_life(None),
+            height=40,
+            fg_color=("#3b8ed0", "#1f6aa5"),
+            hover_color=("#36719f", "#144870")
+        )
+        all_btn.pack(fill="x", padx=10, pady=5)
+
+        # Scrollable frame for Life buttons
+        scrollable_frame = ctk.CTkScrollableFrame(parent, label_text="")
+        scrollable_frame.pack(fill="both", expand=True, padx=5, pady=5)
+
+        # Individual Life buttons with quest counts
+        for life_name, icon in LIVES:
+            count = self.db.get_life_quest_count(life_name)
+            btn = ctk.CTkButton(
+                scrollable_frame,
+                text=f"{icon} {life_name} ({count})",
+                command=lambda l=life_name: self.filter_by_life(l),
+                anchor="w",
+                height=40,
+                fg_color=("gray75", "gray25"),
+                hover_color=("gray70", "gray30")
+            )
+            btn.pack(fill="x", pady=2)
+
+    def filter_by_life(self, life_name):
+        """Filter quests by Life"""
+        self.current_life_filter = life_name
+        self.load_quests()
+
+
+    def create_progress_panel(self, parent):
+        """Create bottom panel with Life progress bars"""
+        from modules.constants import LIVES
+        from modules.progress_tracker import ProgressTracker
+
+        # Initialize progress tracker
+        if not hasattr(self, 'progress_tracker'):
+            self.progress_tracker = ProgressTracker(self.db)
+
+        # Header with collapse button
+        header_frame = ctk.CTkFrame(parent, height=30)
+        header_frame.pack(fill="x", pady=(5, 0))
+        header_frame.pack_propagate(False)
+
+        header_label = ctk.CTkLabel(header_frame, text="Life Progress Tracking", font=("Arial", 14, "bold"))
+        header_label.pack(side="left", padx=10)
+
+        # Scrollable horizontal frame for progress bars
+        scroll_frame = ctk.CTkScrollableFrame(parent, orientation="horizontal", height=100)
+        scroll_frame.pack(fill="both", expand=True, pady=5)
+
+        # Create progress widget for each Life
+        for life_name, icon in LIVES:
+            self.create_life_progress_widget(scroll_frame, life_name, icon)
+
+    def create_life_progress_widget(self, parent, life_name, icon):
+        """Create individual Life progress bar widget"""
+        progress = self.progress_tracker.get_life_progress(life_name)
+
+        # Container frame
+        frame = ctk.CTkFrame(parent, width=220, corner_radius=10)
+        frame.pack(side="left", padx=8, pady=5)
+        frame.pack_propagate(False)
+
+        # Life name and icon
+        header = ctk.CTkLabel(frame, text=f"{icon} {life_name}", font=("Arial", 13, "bold"))
+        header.pack(pady=(8, 5))
+
+        # Progress bar
+        progress_bar = ctk.CTkProgressBar(frame, width=200, height=20)
+        progress_bar.set(progress['percentage'] / 100)
+        progress_bar.pack(pady=5)
+
+        # Progress text
+        progress_label = ctk.CTkLabel(
+            frame,
+            text=f"{progress['completed']}/{progress['total']} ({progress['percentage']:.0f}%)",
+            font=("Arial", 11)
+        )
+        progress_label.pack(pady=(0, 8))
+
+    def update_progress_bars(self):
+        """Refresh all progress bars"""
+        if hasattr(self, 'progress_tracker'):
+            self.progress_tracker.invalidate_cache()
+
+        # Recreate progress panel
+        if hasattr(self, 'bottom_panel'):
+            for widget in self.bottom_panel.winfo_children():
+                widget.destroy()
+            self.create_progress_panel(self.bottom_panel)
+
     def load_quests(self):
         """Load quests into the tree view"""
         # Clear existing
@@ -470,6 +706,11 @@ class ModernQuestTracker(ctk.CTk):
         search = self.search_var.get()
         if search:
             filters['search'] = search
+            filters['search_field'] = self.search_field_var.get()
+
+        # Life filter
+        if self.current_life_filter:
+            filters['life'] = self.current_life_filter
 
         sort_by = self.sort_var.get()
         filters['sort_by'] = sort_by
@@ -488,8 +729,8 @@ class ModernQuestTracker(ctk.CTk):
                 status_text,
                 quest['name'] or "",
                 quest['life'] or "",
-                quest['rank'] or "",
-                quest['giver'] or "",
+                quest['rank'] or "",   # Rank
+                quest['giver'] or "",  # NPC/Giver
                 quest['turn_in'] or ""
             )
 
@@ -529,9 +770,9 @@ class ModernQuestTracker(ctk.CTk):
     def debounced_reload(self):
         """Debounced quest reload (wait 300ms after typing)"""
         if self.save_timer:
-            self.save_timer.cancel()
-        self.save_timer = Timer(0.3, self.load_quests)
-        self.save_timer.start()
+            self.after_cancel(self.save_timer)
+        # Use after() instead of Timer to stay in main thread
+        self.save_timer = self.after(300, self.load_quests)
 
     def on_quest_double_click(self, event):
         """Handle double-click on quest"""
@@ -558,11 +799,27 @@ class ModernQuestTracker(ctk.CTk):
         details += f"Turn In: {quest['turn_in'] or 'N/A'}\n"
         details += f"Description: {quest['description'] or 'N/A'}\n"
 
-        if quest['url']:
-            details += f"\nWiki: {quest['url']}\n"
-
         self.details_text.delete("1.0", "end")
         self.details_text.insert("1.0", details)
+
+        # Add/update wiki button if URL exists
+        if quest['url']:
+            if hasattr(self, 'wiki_button'):
+                self.wiki_button.destroy()
+
+            self.wiki_button = ctk.CTkButton(
+                self.details_text.master,
+                text="🌐 Open Wiki",
+                command=lambda: webbrowser.open(quest['url']),
+                fg_color="#4a9eff",
+                hover_color="#357abd",
+                height=35,
+                width=150
+            )
+            # Insert after details_text
+            self.wiki_button.pack(after=self.details_text, pady=5)
+        elif hasattr(self, 'wiki_button'):
+            self.wiki_button.destroy()
 
         # Load note
         note = self.db.get_note(quest_id)
@@ -601,6 +858,7 @@ class ModernQuestTracker(ctk.CTk):
 
         self.db.bulk_update_status(list(self.selected_quests), new_status)
         self.load_quests()
+        self.update_progress_bars()  # Refresh progress bars
         messagebox.showinfo("Success", f"Updated {len(self.selected_quests)} quest(s)")
 
     def show_bulk_operations(self):

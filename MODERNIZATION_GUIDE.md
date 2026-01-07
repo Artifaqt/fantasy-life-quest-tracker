@@ -1,19 +1,19 @@
 # Fantasy Life Quest Tracker - Modernization Guide
 
-## 🎉 What's New in the Modern Edition
+## What's New in the Modern Edition
 
-The Quest Tracker has been **completely overhauled** with modern technologies and features!
+The Quest Tracker has been completely overhauled with modern technologies and features.
 
-### 🌟 Major Upgrades
+### Major Upgrades
 
-#### **1. Beautiful Modern UI with Dark Mode**
-- **CustomTkinter** framework for sleek, professional appearance
-- Built-in **dark/light mode toggle** (top-left switch)
+#### **1. Modern UI with Dark Mode**
+- CustomTkinter framework for professional appearance
+- Built-in dark/light mode toggle (top-left switch)
 - Color-coded quest rows:
-  - 🔴 Red = Unobtained
-  - 🟡 Yellow = Obtained
-  - 🟢 Green = Completed
-  - 🔵 Blue = Turned In
+  - Red = Unobtained
+  - Yellow = Obtained
+  - Green = Completed
+  - Blue = Turned In
 - Smooth, modern buttons and controls
 - Resizable window with responsive layout
 
@@ -30,10 +30,13 @@ The Quest Tracker has been **completely overhauled** with modern technologies an
 - Better data integrity and performance
 
 #### **4. Advanced Search & Filtering**
-- **Real-time search** as you type (debounced for performance)
-- Filter by status: All, Unobtained, Obtained, Completed, Turned In
+- **Enhanced search** with field selector dropdown:
+  - Search by: Name, Life, NPC, Description, or All
+  - Real-time filtering as you type (debounced for performance)
+- **Life filtering** - 12 Life buttons in left sidebar with quest counts
+- **Status filtering** - Filter by: All, Unobtained, Obtained, Completed, Turned In
+- **Custom rank sorting** - Quests sort by progression (Novice → Creator)
 - Sort by: Name, Life, Rank, Status, Last Modified
-- Search matches quest names instantly
 
 #### **5. Multi-Select & Bulk Operations**
 - **Ctrl+Click** to select multiple quests
@@ -47,11 +50,12 @@ The Quest Tracker has been **completely overhauled** with modern technologies an
 - "Save Note" button to persist your notes
 - Great for tracking quest requirements or strategies
 
-#### **7. Statistics Dashboard**
-- Live progress tracking at the top
-- Total quests, completion percentage
-- Breakdown by status with emoji indicators
-- Updates automatically as you mark quests
+#### **7. Life Progress Tracking**
+- **12 progress bars** showing completion for each Life
+- Live percentage and quest counts (e.g., "31/78 (40%)")
+- Automatically updates when you mark quests
+- Horizontal scrolling to see all Lives
+- Visual progress at a glance
 
 #### **8. Keyboard Shortcuts**
 - **Ctrl+F** - Focus search box
@@ -63,31 +67,45 @@ The Quest Tracker has been **completely overhauled** with modern technologies an
 - **Ctrl+4** - Mark selected as Turned In
 - **Esc** - Clear search
 
-#### **9. Import/Export**
+#### **9. Wiki Integration**
+- "Open Wiki" button for each quest
+- Click to open the Fantasy Life Wiki page
+- Learn quest requirements and walkthroughs
+- Integrated into quest details panel
+
+#### **10. Import/Export**
 - Export all quest data to JSON format
 - Includes notes, tags, and timestamps
 - Backup your progress easily
 
-## 🚀 How to Run
+## How to Run
 
-### Running the Modern Version
+### Option 1: Standalone Executable (Recommended)
 
+**Download the latest release:**
+1. Go to [Releases](../../releases)
+2. Download `FantasyLifeQuestTracker.exe`
+3. Double-click to run - no installation needed!
+
+### Option 2: Running from Source
+
+**Install dependencies (first time only):**
 ```bash
-# Install dependencies (first time only)
-pip install customtkinter pillow openpyxl
-
-# Run the modern version
-python3 FantasyLifeQuestTracker_Modern.py
+pip install -r requirements.txt
+# Or manually: pip install customtkinter pillow openpyxl
 ```
 
-### Running the Original Version
-
+**Run the modern version:**
 ```bash
-# The original still works!
-python3 FantasyLifeQuestTracker.py
+python FantasyLifeQuestTracker_Modern.py
 ```
 
-## 📖 How to Use
+**Run the original version:**
+```bash
+python FantasyLifeQuestTracker.py
+```
+
+## How to Use
 
 ### First Launch
 1. The app will **automatically import** your existing data from `currentprogress.txt` and `FLData.xlsx`
@@ -115,17 +133,25 @@ python3 FantasyLifeQuestTracker.py
 
 ### Searching & Filtering
 
-**Search:**
-- Type in the search box (top toolbar)
-- Search filters quest names in real-time
-- Press Ctrl+F to quickly focus search
-- Press Esc to clear search
+**Enhanced Search:**
+1. Choose search field from dropdown (Name, Life, NPC, Description, All)
+2. Type in the search box
+3. Results filter in real-time
+4. Press Ctrl+F to quickly focus search
+5. Press Esc to clear search
+
+**Filter by Life:**
+- Click any of the 12 Life buttons in the left sidebar
+- See only quests for that specific Life
+- Click "All Lives" to see everything
+- Button shows quest count for each Life
 
 **Filter by Status:**
 - Click radio buttons in toolbar: All, Unobtained, Obtained, Completed, Turned In
 
 **Sort:**
 - Use the "Sort" dropdown to order by Name, Life, Rank, Status, or Last Modified
+- Rank sorting follows progression: Novice → Fledgling → Apprentice → Adept → Expert → Master → Hero → Legend → Demi-Creator → Creator
 
 ### Adding Notes
 
@@ -137,8 +163,8 @@ python3 FantasyLifeQuestTracker.py
 ### Viewing Quest Details
 
 - **Double-click** any quest to view full details
-- Details panel shows: Name, Life, Rank, Giver, Turn In location, Description, Wiki URL
-- Click quest name to open wiki in browser (planned feature)
+- Details panel shows: Name, Life, Rank, Giver (NPC), Turn In location, Description, Wiki URL
+- Click "Open Wiki" button to open the quest's wiki page in your browser
 
 ### Exporting Data
 
@@ -151,39 +177,46 @@ python3 FantasyLifeQuestTracker.py
 - Toggle the "Dark Mode" switch (top-left)
 - Your preference is saved
 
-## 🎯 Pro Tips
+## Pro Tips
 
 ### Multi-Select Power
 - **Ctrl+Click** individual quests to select them
 - **Shift+Click** to select a range
 - Great for bulk updating all quests in a Life
 
-### Quick Filtering Workflow
-1. Filter by status: "Unobtained"
-2. Sort by "Life"
-3. Search for specific quest name
-4. Multi-select quests
-5. Bulk mark as "Obtained"
+### Efficient Workflow
+1. Filter by Life (e.g., "Paladin")
+2. Sort by Rank to see progression
+3. Search for specific quests
+4. Multi-select and bulk update
 
 ### Keyboard Ninja Mode
 - Ctrl+F → type search → Select quests → Ctrl+3 → Done!
 - Update dozens of quests in seconds
 
+### Track Your Journey
+- Watch the progress bars fill up as you complete quests
+- Use the quest notes to remember tricky requirements
+- Export your progress to backup or share
+
 ### Color-Coding
 - Rows are color-coded so you can see status at a glance
-- 🔴 Red quests = not started
-- 🟢 Green quests = completed (but not turned in)
-- 🔵 Blue quests = fully done!
+- Red quests = not started (Unobtained)
+- Yellow quests = obtained (but not completed)
+- Green quests = completed (but not turned in)
+- Blue quests = fully done (Turned In)
 
-## 🔧 Technical Details
+## Technical Details
 
 ### Architecture Improvements
 - **Class-based design** (no more global variables!)
+- **Modular structure** - Separate modules for constants, progress tracking, and image management
 - **MVC pattern** - Model (Database), View (UI), Controller (Logic)
 - **Debounced search** - 300ms delay prevents lag while typing
 - **SQLite database** - Supports complex queries, indexing, transactions
 - **Virtual scrolling** - Renders 1000+ rows smoothly
 - **Modern Python** - Type hints, proper error handling
+- **3-panel layout** - Left sidebar (Life filters), center (quest table), right panel (details)
 
 ### Performance Gains
 - **100x faster filtering** (database queries vs nested loops)
@@ -200,27 +233,44 @@ quest_tags: quest_id, tag
 statistics: date, completed_count, turned_in_count
 ```
 
-## 🆚 Original vs Modern
+**Note:** Database columns are correctly mapped from Excel:
+- `giver` column = NPC name (Excel column 4)
+- `rank` column = Rank (Excel column 6)
 
-| Feature | Original | Modern |
-|---------|----------|---------|
+### Module Structure
+```
+modules/
+├── __init__.py
+├── constants.py         # LIVES, RANK_ORDER, STATUS_COLORS
+├── region_mapping.py    # Regional data (for future features)
+├── image_manager.py     # Image loading/caching
+└── progress_tracker.py  # Progress calculations
+```
+
+## Original vs Modern
+
+| Feature | Original (2020) | Modern (2026) |
+|---------|----------------|---------------|
 | UI Framework | tkinter | CustomTkinter |
 | Appearance | Basic grey | Modern with dark mode |
 | Data Storage | Text file + Excel | SQLite database |
 | Quest Display | 29 per page | All 1296 (virtual scroll) |
-| Sorting | Name, Life, Location, Status | Same + Rank, Last Modified |
-| Search | Name only | Real-time debounced |
+| Search | Name only | Name/Life/NPC/Description/All |
+| Sorting | Name, Life, Location, Status | Same + Custom Rank progression |
 | Multi-select | No | Yes (Ctrl/Shift+Click) |
+| Life Filters | No | 12 Life buttons with counts |
+| Progress Tracking | No | 12 Life progress bars |
+| Wiki Integration | Links only | Clickable "Open Wiki" button |
 | Bulk Operations | No | Yes |
-| Quest Notes | No | Yes |
+| Quest Notes | No | Yes (per-quest notes) |
 | Keyboard Shortcuts | No | 10+ shortcuts |
 | Color Coding | No | Yes (status colors) |
-| Statistics | Button counters only | Full dashboard |
 | Export | No | JSON export |
 | Performance | Slow (Excel reads) | Fast (database) |
 | Window | Fixed 1500x1000 | Resizable |
+| Executable | No | Yes (standalone .exe) |
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### "No module named 'customtkinter'"
 ```bash
@@ -241,18 +291,35 @@ pip install customtkinter pillow
 - Clear the search box (press Esc)
 - Restart the application
 
-## 🔮 Future Enhancements (Potential)
+## Building the Executable
 
-- Cloud sync (Google Drive, Dropbox)
+To build your own standalone executable:
+
+```bash
+# Install PyInstaller
+pip install pyinstaller
+
+# Run the build script
+python build_exe.py
+```
+
+The executable will be created in the `dist/` folder as `FantasyLifeQuestTracker.exe`.
+
+For detailed build instructions, see [BUILD_INSTRUCTIONS.md](BUILD_INSTRUCTIONS.md).
+
+## Future Enhancements (Potential)
+
+- Location-based filtering with images
 - Quest dependencies tracking
 - Recommended next quests
 - Time tracking & graphs
 - Multiple save profiles
+- Cloud sync (Google Drive, Dropbox)
 - Plugin system
 - Web version (Flask + React)
 - Mobile app (React Native)
 
-## 📝 Migration Notes
+## Migration Notes
 
 ### Data Compatibility
 - Your original `currentprogress.txt` is **NOT modified**
@@ -266,7 +333,5 @@ pip install customtkinter pillow
 - Delete `quest_tracker.db` to reset modern version
 
 ---
-
-**Enjoy your modernized quest tracking experience! 🎮✨**
 
 Questions or issues? Check the GitHub issues page.

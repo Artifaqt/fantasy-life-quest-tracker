@@ -24,3 +24,22 @@ Thumbs.db
 # Backup files
 *.bak
 *.tmp
+
+# Database files
+quest_tracker.db
+
+# PyInstaller build artifacts
+build/
+dist/
+*.spec
+
+# Temporary/utility scripts created during development
+create_progress_file.py
+fix_database.py
+test_import.py
+full_import.py
+NUL
+FLT.zip
+
+# Development cache
+.claude/

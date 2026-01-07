@@ -1,122 +1,211 @@
-# Fantasy Life Quest Tracker
+# Fantasy Life Quest Tracker - Modern Edition
 
-## 🎮 Two Versions Available
+A comprehensive desktop application for tracking all 1296 quests in Fantasy Life (3DS).
 
-### 🌟 **Modern Edition (2026)** - RECOMMENDED
-Beautiful, feature-rich version with dark mode, virtual scrolling, and tons of improvements!
+![Version](https://img.shields.io/badge/version-2.0-blue)
+![Python](https://img.shields.io/badge/python-3.8+-green)
+![License](https://img.shields.io/badge/license-MIT-blue)
 
-**Run:** `python3 FantasyLifeQuestTracker_Modern.py`
+## Features
 
-**Features:**
-- ✨ Modern UI with dark/light mode toggle
-- 🎨 Color-coded quest rows (red/yellow/green/blue)
-- 📊 Live statistics dashboard
-- 🔍 Real-time search with debouncing
-- ⚡ Virtual scrolling (view all 1296 quests at once!)
-- 📝 Quest notes system
-- 🎯 Multi-select & bulk operations (Ctrl+Click, Shift+Click)
-- ⌨️ Keyboard shortcuts (Ctrl+F, Ctrl+1/2/3/4, etc.)
-- 💾 SQLite database backend (fast & reliable)
-- 📤 Export to JSON
-- 🪟 Resizable window
+### Modern UI with Dark Mode
+- CustomTkinter interface with professional styling
+- Built-in dark/light mode toggle
+- Color-coded quest rows by status:
+  - Red = Unobtained
+  - Yellow = Obtained
+  - Green = Completed
+  - Blue = Turned In
 
-**See:** [MODERNIZATION_GUIDE.md](MODERNIZATION_GUIDE.md) for full documentation
+### Advanced Search & Filtering
+- Enhanced search with field selector:
+  - Search by: Name, Life, NPC, Description, or All Fields
+  - Real-time filtering as you type
+- Life filtering: 12 Life buttons with quest counts
+- Status filtering: Filter by completion status
+- Custom rank sorting: Quests sort by progression (Novice to Creator)
 
----
+### Life Progress Tracking
+- 12 progress bars showing completion for each Life
+- Live percentage and quest counts
+- Automatically updates when you mark quests
+- Horizontal scrolling to view all Lives
 
-### 📦 **Original Version (2020)**
-Download Link: https://sarahb222.itch.io/unofficial-fantasy-life-quest-tracker
+### Wiki Integration
+- "Open Wiki" button for each quest
+- Opens the Fantasy Life Wiki page in your browser
+- Quick access to quest requirements and walkthroughs
 
-- Extract the file to whichever folder you want.
-- I recommend making a shortcut to FantasyLifeQuestTracker.exe so that you can place it in a more convenient location such as your Desktop.
-- If you would like to start the file with all "Novice" level requests turned in and all "Fledgling" level requests obtained, change the file called currentprogress_all_lives_start.txt to currentprogress.txt. You can also make a copy of this file in case you want to restart later on.
-- If you would like to start a new character but keep your old file in case you want to go back to your previous character, just change currentprogress.txt to some other name such as currentprogress_CharacterName.txt. You can also just delete currentprogress.txt if you don't care about the previous data.
-- The file saves every time you make any change, so you never have to worry about forgetting to save before closing the program.
+### Performance & Quality of Life
+- Virtual scrolling: View all 1296 quests at once
+- Multi-select quests (Ctrl+Click, Shift+Click)
+- Bulk operations: Update multiple quests at once
+- Quest notes: Add personal notes to any quest
+- SQLite database: Fast, reliable data storage
+- Auto-import: Automatically loads data on first run
 
-Fantasy Life Request Tracking Tool V2.0
+### Keyboard Shortcuts
+- `Ctrl+F` - Focus search box
+- `Ctrl+E` - Export data
+- `Ctrl+B` - Bulk operations
+- `Ctrl+1/2/3/4` - Mark selected quests by status
+- `Esc` - Clear search
 
-![image](https://user-images.githubusercontent.com/5571989/72780677-6c63f700-3bed-11ea-9c7d-f5df72c85931.png)
+## Download & Installation
 
-Using the Program:
+### Option 1: Standalone Executable (Recommended)
 
--------------Maps and Buttons-------------
+**Download the latest release:**
+1. Go to [Releases](../../releases)
+2. Download `FantasyLifeQuestTracker.exe`
+3. Double-click to run - no installation needed!
 
-- The left side is all the map buttons.
-- The right side has option buttons at the top and a list of requests below them.
+### Option 2: Run from Source
 
-![image](https://user-images.githubusercontent.com/5571989/72780127-03c84a80-3bec-11ea-86cd-72c20a33d240.png)
-- You can hover over the map buttons to see the name of the location.
+**Requirements:**
+- Python 3.8 or higher
+- pip (Python package manager)
 
-![image](https://user-images.githubusercontent.com/5571989/72780415-d203b380-3bec-11ea-9bfc-82a69d5142f3.png)
-- The program's title changes depending on which buttons you have clicked, telling you the location and which option button was pressed.
+**Installation:**
+```bash
+# Clone or download this repository
+git clone https://github.com/yourusername/fantasy-life-quest-tracker.git
+cd fantasy-life-quest-tracker
 
-![image](https://user-images.githubusercontent.com/5571989/72780063-cc599e00-3beb-11ea-9558-6bad1abb9178.png)
-- Selecting a location on the left will change the request list to show only
-	quests associated with that particular location. If you choose "ALL" then
-  	all quest locations will show (this is the default option when you open
-	the program). If you choose "LIVES" then only Life Challenges will show.
-	
-![image](https://user-images.githubusercontent.com/5571989/72780084-dd0a1400-3beb-11ea-98a1-5a85033f1b63.png)
-- Selecting from the options at the top right will change the request list to show
-	only request that are unobtained, obtained, completed, or turned in depending
-	on the option you chose. If you choose all, then all quests will show.
-- If you select a location, the program remembers which option button you have chosen.
-	For example, if you had chosen "Obtained Requests" in East Grassy Plains and
-	now you choose West Grassy Plains, you will see the obtained requests in West
-	Grassy Plains.
-- Similarly, if you select a option button, the program will remember which location
-	you have chosend. For example, if you had chosen to see the "Completed Requests"
-	in East Grassy Plains and now you switch to "Obtained Requests," you will see
-	the obtained requests in East Grassy Plains.
+# Install dependencies
+pip install -r requirements.txt
 
--------------Text Below Buttons-------------
+# Run the tracker
+python FantasyLifeQuestTracker_Modern.py
+```
 
-![image](https://user-images.githubusercontent.com/5571989/72780160-1f335580-3bec-11ea-8585-38dcec4d73ce.png)
-- The text below each button shows #/#/#/#
-- The first number is the unobtained requests in that area. These are requests you can
-	pick up by going to that area and talking to the proper NPC.
-- The second number is the obtained requests in that area. These are requests you can work
-	on by going to that area. For example, if you need to kill bandits for a request,
-	the second number under "East Grassy Plains" would increase by 1 because you need
-	to go there to complete that request.
-- The third number is the completed requests in that area. These are requests that are
-	finished but havenot been turned in yet. The NPC to turn in the request is located
-	on that map.
-- The fourth number is the turned in requests in that area. These are requests that you
-	have already turned in to the NPC that is located in that area.
+## Usage
 
--------------Request List-------------
+### First Run
+The tracker will automatically import all 1296 quests from the included `FLData.xlsx` file. All quests start as "Unobtained".
 
-![image](https://user-images.githubusercontent.com/5571989/72780261-69b4d200-3bec-11ea-8b83-0e5b51fb8493.png)
+### Tracking Your Progress
 
-![image](https://user-images.githubusercontent.com/5571989/72780230-4be76d00-3bec-11ea-9622-eec2d4c25a75.png)
-- Under the "Complete" column is a drop down menu.
-  - Choose Unobtained if you do not have the request (default option)
-  - Choose Obtained if you have the request
-  - Choose Completed if you have finished doing the request
-  - Choose Turned In if you have turned in the request to the NPC
+**Update Quest Status:**
+1. Click a quest in the table
+2. Use the colored status buttons on the right, or
+3. Select multiple quests (Ctrl+Click) and use "Bulk Edit"
 
-- The "NPC" column is the name of the NPC associated with the request
-- The "Life" column shows you the life associated with the request, but only if it is
-	a "life challenge" and not an "other request"
-- The "Rank" column shows the rank associated with the request. All "life challenges" will
-	show a rank but only some "other requests" show a rank.
-- The "Name" column shows the name of the request. If you click on it, it will take you to
-	a wiki page. Usually the wiki page will be for whatever object you need or whatever
-	enemy you need to kill etc.
-- The "Desc" column shows what is required for the request.
-- The "Turn In" column shows where you obtain or turn in the request.
+**Filter by Life:**
+- Click any of the 12 Life buttons in the left sidebar
+- See only quests for that specific Life
+- Click "All Lives" to see everything
 
-![image](https://user-images.githubusercontent.com/5571989/72780386-bbf5f300-3bec-11ea-8295-dafffa937bd8.png)
-- The "Location" column shows where you go to work on a request. If you click on an option,
-  the program will automatically switch to that location. It will also switch to "Obtained Requests."
-  Use this if you want to quickly go to a location where you can work on that particular request.
-  
-![image](https://user-images.githubusercontent.com/5571989/72780515-0f684100-3bed-11ea-9015-a6c22a3576ac.png)
-- Below the requests are Forward and Back buttons to access more requests. Only 29 requests can be seen per page.
+**Search for Quests:**
+1. Choose search field from dropdown (Name, Life, NPC, etc.)
+2. Type in the search box
+3. Results filter in real-time
 
---------------------------
+**View Quest Details:**
+- Double-click any quest to see full details
+- Click "Open Wiki" to learn more about the quest
 
-Known Bugs:
+**Add Personal Notes:**
+1. Select a quest
+2. Type notes in the "Notes" box
+3. Click "Save Note"
 
-- None at the moment!
+### Export Your Progress
+Click the "Export" button to save all your quest data (including notes) as a JSON file.
+
+## Pro Tips
+
+### Keyboard Ninja
+- Use `Ctrl+F` → type search → `Ctrl+1/2/3/4` to quickly mark quests
+- Use `Shift+Click` to select a range of quests for bulk updates
+
+### Efficient Workflow
+1. Filter by Life (e.g., "Paladin")
+2. Sort by Rank to see progression
+3. Search for specific quests
+4. Multi-select and bulk update
+
+### Track Your Journey
+- Watch the progress bars fill up as you complete quests
+- Use the quest notes to remember tricky requirements
+- Export your progress to backup or share
+
+## File Structure
+
+```
+fantasy-life-quest-tracker/
+├── FantasyLifeQuestTracker_Modern.py  # Main application
+├── modules/                            # Helper modules
+│   ├── constants.py                   # Lives, ranks, colors
+│   ├── region_mapping.py              # Regional data
+│   ├── image_manager.py               # Image loading
+│   └── progress_tracker.py            # Progress calculations
+├── Images/                            # Location thumbnails
+├── FLData.xlsx                        # Quest database source
+├── currentprogress.txt                # Progress file
+├── quest_tracker.db                   # SQLite database (auto-created)
+└── README.md                          # This file
+```
+
+## Building the Executable
+
+To build your own executable:
+
+```bash
+# Install PyInstaller
+pip install pyinstaller
+
+# Run build script
+python build_exe.py
+```
+
+The executable will be created in the `dist/` folder.
+
+## Original vs Modern
+
+| Feature | Original (2020) | Modern (2026) |
+|---------|----------------|---------------|
+| UI Framework | tkinter | CustomTkinter |
+| Appearance | Basic grey | Modern with dark mode |
+| Data Storage | Text file + Excel | SQLite database |
+| Quest Display | 29 per page | All 1296 (virtual scroll) |
+| Search | Name only | Name/Life/NPC/Description/All |
+| Multi-select | No | Yes (Ctrl/Shift+Click) |
+| Progress Tracking | No | 12 Life progress bars |
+| Wiki Integration | Links only | Clickable "Open Wiki" button |
+| Life Filters | No | 12 Life buttons with counts |
+| Notes System | No | Yes (per-quest notes) |
+| Keyboard Shortcuts | No | 10+ shortcuts |
+| Performance | Slow (Excel reads) | Fast (database) |
+
+## Troubleshooting
+
+**"No module named 'customtkinter'"**
+```bash
+pip install customtkinter pillow openpyxl
+```
+
+**Database not importing**
+- Ensure `FLData.xlsx` and `currentprogress.txt` are in the same folder
+- Delete `quest_tracker.db` and restart the app
+
+**Quests not showing**
+- Check your filters (click "All Lives" and "All" status)
+- Clear the search box (press Esc)
+
+**Dark mode looks weird**
+- Try toggling the dark/light mode switch (top-left)
+
+## Credits
+
+- **Original Creator:** Sarah (2020)
+- **Modernization:** 2026
+- **Game:** Fantasy Life © Level-5
+
+## License
+
+MIT License - Feel free to use, modify, and distribute!
+
+## Contributing
+
+Issues and pull requests are welcome. Help make this tracker even better.
